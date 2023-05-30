@@ -1,22 +1,18 @@
 import streamlit as st
-from transformers import RobertaTokenizer, RobertaForQuestionAnswering
-import torch
-import redis
 from PIL import Image
 import os
 import openai
 from utils.redis_helpers import connect_redis, reformat_redis, upload_to_redis, create_query_context
-from utils.vicuna_helpers import clear_history, query, get_http_response_text, extract_answer
 from utils.ocr import ocr_files, get_db_schema
 from streamlit_chat import message
-import time
 from utils.common import load_models , LOG
 from utils.ocr import ocr_files, get_db_schema
 from streamlit_chat import message
 from utils.model_inference_helpers import query_model, query_openai
 from openai.error import OpenAIError
+from dotenv import load_dotenv
 
-
+load_dotenv()
 
 #redis_conn = connect_redis()
 controller_addr = "http://localhost:21001"
@@ -131,17 +127,20 @@ if right.button("Clear Chat History", key="clear"):
 if left.button("Submit"):
     st.session_state['past'].append(user_query)
    
-    assistant_prompt = create_query_context(redis_conn, user_query, model=model_preference_hf_url)
-    with st.expander("See generated prompt"):
-        st.text(assistant_prompt)
     if model_preference_hf_url != "openai":
+        assistant_prompt = create_query_context(redis_conn, user_query, model=model_preference_hf_url)
+        with st.expander("See generated prompt"):
+            st.text(assistant_prompt)
         try:
             res = query_model(model_preference_hf_url, assistant_prompt)
             st.session_state['generated'].append(res['answer'])
         except:
             st.warning("Something went wrong!")
             output = "None"
-    else: 
+    else:
+        assistant_prompt = create_query_context(redis_conn, user_query, model=model_preference_hf_url)
+        with st.expander("See generated prompt"):
+            st.text(assistant_prompt)
         try: 
             res = query_openai(gpt_engine, assistant_prompt, max_new_tokens)
             

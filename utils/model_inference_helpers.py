@@ -12,6 +12,8 @@ def query_openai(gpt_engine: str, assistant_prompt: str, max_new_tokens: int):
     LOG.info(f"Engine: {gpt_engine}")
     LOG.info(f"Assistant Prompt: {assistant_prompt}")
     LOG.info(f"Max Tokens: {max_new_tokens}")
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    openai.organization = os.getenv("OPENAI_ORG")
     try:
 
         response = openai.Completion.create(
