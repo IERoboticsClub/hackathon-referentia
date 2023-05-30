@@ -45,6 +45,8 @@ def load_tokenizer_database() -> SentenceTransformer:
     """
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     model = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
+    model = SentenceTransformer('AIDA-UPM/mstsb-paraphrase-multilingual-mpnet-base-v2')
+    #TODO: param model 
     return model
 
 
