@@ -9,7 +9,7 @@ from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
 from transformers import RobertaTokenizer
 import torch
-from utils.common import LOG
+from utils.common import LOG, env
 
 
 def ocr_files(tempDir: str) -> dict:
@@ -29,7 +29,7 @@ def ocr_files(tempDir: str) -> dict:
                 interpreter = PDFPageInterpreter(rsrcmgr, device)
                 interpreter.process_page(page)
                 text = output_string.getvalue()
-                sentences[book][i] = text.replace(".  \n", ".\n").split(".\n")
+                sentences[book][i] = text.replace(".  \n", ".\n").split(".")
                 for sentence in sentences[book][i]:
                     sentence_processed = sentence.replace("\n", "").replace("  ", " ").replace("-", "")
                     sentences[book][i][sentences[book][i].index(sentence)] = sentence_processed
@@ -43,6 +43,7 @@ def load_tokenizer_database() -> SentenceTransformer:
     Uses a BERT based sentence transformer 
         -> TODO: Generate a Sentence Transformer based on the roberte base model 
     """
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
     model = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
     return model
 
@@ -68,6 +69,5 @@ def get_db_schema(sentences: dict) -> dict:
         for page in sentences[doc].keys():
             for sentence in sentences[doc][page]:
                 embedded_text = get_embedding(sentence, tokenizer)
-                LOG.info(f"Embedding the text:", len(embedded_text))
                 aux_dict[str(doc + str(page) + sentence)] = [str(doc + str(page) + sentence), str(page), doc, sentence, embedded_text]
     return aux_dict

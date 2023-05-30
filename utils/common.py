@@ -1,6 +1,65 @@
 import logging
 import os
+import ast
+from dataclasses import dataclass
+from dotenv import load_dotenv
 
+load_dotenv()
+
+@dataclass
+class Config:
+    """
+    Class for configuration of the environment
+    """
+    controller:str
+    worker:str
+    openapi:str
+    org:str
+    version:None
+    endpoint:str 
+    port:str
+    username:str
+
+ 
+# def config_local() -> Config:
+#     """This function returns the configuration for the local environment"""
+#     try:
+#         return Config(openapi=os.getenv('OPENAI_API_KEY'),
+#                     org=os.getenv('OPENAI_ORG'),
+#                     type=os.getenv('OPENAI_API_TYPE'),
+#                     version=os.getenv('OPENAI_API_VERSION'),
+#                     controller=os.getenv('REDIS_CONTROLLER'),
+#                     worker=os.getenv('REDIS_WORKER'), 
+#                     endpoint=os.getenv('REDIS_ENDPOINT'),
+#                     port=os.getenv('REDIS_PORT'),
+#                     username=os.getenv('REDIS_USERNAME'))
+    
+#     except KeyError as ke:
+#         raise ValueError(f'The env var {ke} is mandatory')
+
+
+def config_from_env() -> Config:
+    if os.environ['STATE'] == 'PROD' or os.getenv('STATE') == 'PROD':
+        
+        try:
+            return Config(openapi=os.environ['OPEN_API_KEY'],
+                        org=os.environ['OPENAI_ORG'])
+        
+        except KeyError as ke:
+            raise ValueError(f'The env var {ke} is mandatory')
+    else:
+        try:
+            return Config(openapi=os.getenv('OPENAI_API_KEY'),
+                        org=os.getenv('OPENAI_ORG'),
+                        controller=os.getenv('REDIS_CONTROLLER'),
+                        worker=os.getenv('REDIS_WORKER'), 
+                        version=ast.literal_eval(os.getenv('OPENAI_API_VERSION')),
+                        endpoint=os.getenv('REDIS_ENDPOINT'),
+                        port=os.getenv('REDIS_PORT'),
+                        username=os.getenv('REDIS_USERNAME'))
+        
+        except KeyError as ke:
+            raise ValueError(f'The env var {ke} is mandatory')
 
 
 def load_models(): 
@@ -9,9 +68,8 @@ def load_models():
                 'MarIA Base': 'PlanTL-GOB-ES/roberta-base-bne-sqac', # qa
                 'MarIA large': 'PlanTL-GOB-ES/roberta-large-bne-sqac', # qa
                 'Beto Base Spanish Sqac': 'IIC/beto-base-spanish-sqac', # qa
-
                 'ChatGPT': 'openai', # paid token
-                'GPT2 Base Spanish Fine tuned': 'xxxx/gpt2-large-bne', # tbd
+                'GPT2 Base Spanish Fine tuned': 'coming soon', # TODO: add model
             }
 
 def create_logger(): 
@@ -27,5 +85,9 @@ def create_logger():
     return logger
 
 
+
 # ------ CONSTANTS ------
 LOG = create_logger()
+
+env = config_from_env()
+

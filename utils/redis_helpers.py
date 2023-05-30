@@ -5,18 +5,13 @@ import numpy as np
 import hashlib
 from utils.ocr import get_embedding, load_tokenizer_database
 import os
-from utils.common import LOG
-
-# Redis connection details
-endpoint = "127.0.0.1"
-port = 6379
-username = "default"
-
+from utils.common import LOG, env
 
 def connect_redis():
     """Connect to Redis and return the connection object."""
  
-    redis_conn = redis.Redis(host=endpoint, port=port, username=username)
+    redis_conn = redis.Redis(host=env.endpoint, port=env.port, username=env.username)
+    LOG.info(f"Redis connection: {redis_conn}")
     return redis_conn
 
 
@@ -69,6 +64,16 @@ def get_top_n(n: int, redis_conn: redis.Redis , vector_query: np.array) -> dict:
     
     return res
 
+def upload_reviews_to_redis(id_sentence: str, text: str, embedded_text: list, redis_conn: redis.Redis):
+    key_doc = {
+    "uid": id_sentence,
+    "content": text,
+    "embeddings": np.array(embedded_text).astype(dtype=np.float32).tobytes(),
+    }
+    # Store a blob of a random vector of type float32 under a field named 'vector' in Redis hash.
+    hash_key = hashlib.md5(text.encode()).hexdigest()
+    key = f"embedding:{hash_key}"
+    redis_conn.hset(key, mapping=key_doc)
 
 def create_query_context(redis_conn: redis.Redis, user_query: str, model: str) -> tuple:
     """ Here we structure the context of the query depending on wether the model is an enocoder or decoder based model. """
@@ -76,15 +81,16 @@ def create_query_context(redis_conn: redis.Redis, user_query: str, model: str) -
     LOG.info(f"Model for query context: {tokenizer}") 
     embedded_query = get_embedding(user_query, tokenizer)
     vector_query = np.array(embedded_query).astype(dtype=np.float32).tobytes()
-    print(redis_conn)
+
     search_result = get_top_n(5, redis_conn, vector_query)
+    LOG.info(f"Search result: {search_result}")
 
     context = ""
-    
     if model == "openai":
         for doc in search_result.docs:
             context = context + f"""Ref: [{doc.sourcefile}, page {doc.sourcepage}] Content: {doc.content}\n"""
-        prompt = f""""Como asistente inteligente, tu tarea es responder a las preguntas utilizando los datos proporcionados en el contexto de la fuente dada. Si la información necesaria no está disponible en las fuentes proporcionadas, puedes apoyarte en tu propio conocimiento y hacer referencia a la fuente 'modelo' en tu respuesta.  Cada fuente se identifica por un nombre de archivo, número de página y contenido correspondiente. Asegúrate de citar el archivo de origen cada vez que lo utilices en tu respuesta. Dado que debes utilizar la fuente 'modelo', por favor asegúrate de citarla correctamente. "
+        prompt = f""""Como asistente inteligente, tu tarea es responder a las preguntas utilizando los datos proporcionados en el contexto de la fuente dada. Si la información necesaria no está disponible en las fuentes proporcionadas, puedes apoyarte en tu propio\
+              conocimiento y hacer referencia a la fuente 'modelo' en tu respuesta.  Cada fuente se identifica por un nombre de archivo, número de página y contenido correspondiente. Asegúrate de citar el archivo de origen cada vez que lo utilices en tu respuesta. Dado que debes utilizar la fuente 'modelo', por favor asegúrate de citarla correctamente. "
 
         Pregunta: {user_query}\n\n
         Datos de la fuente:\n{context}\n\n
@@ -93,14 +99,17 @@ def create_query_context(redis_conn: redis.Redis, user_query: str, model: str) -
     
         
     else: 
-        context = f"{search_result.docs[0].content}, \n"
+        for doc in search_result.docs:
+            context = context + f"{doc.content}\n"
+
 
     return user_query, context
 
 
 def create_reviews_query_context(redis_conn: redis.Redis, user_query: str):
-    model = load_tokenizer_database()
-    embedded_query = get_embedding(model, user_query)
+    LOG.info("Creating reviews query context")
+    tokenizer = load_tokenizer_database()
+    embedded_query = get_embedding(user_query, tokenizer)
     vector_query = np.array(embedded_query).astype(dtype=np.float32).tobytes()
     search_result = get_top_n(10, redis_conn, vector_query)
     context = ""
@@ -108,9 +117,11 @@ def create_reviews_query_context(redis_conn: redis.Redis, user_query: str):
         # Merge the variables of the doc into a single string
         context = context + f"""Review {doc.uid} Content: {doc.content}\n"""
     
-    prompt = f""""As an intelligent chatbot, your role is to assist users asking questions about an Airbnb listing. You will respond to questions using only the data provided in the given source context. If the necessary information is not available in the provided sources, say I don't know."\n\n
-    Question: {user_query}\n\n
-    Source data:\n{context}\n\n
-    Answer:"""
-    print(prompt)
+    prompt = f"""Como chatbot inteligente, su función es ayudar a los usuarios que hacen preguntas sobre un listado de Airbnb. Responderá a las preguntas utilizando solo los datos proporcionados en el contexto de la fuente dada. Si la información necesaria no está disponible en las fuentes proporcionadas, diga no lo sé."\n\n
+    
+    Pregunta: {user_query}\n\n
+    Referencias:\n{context}\n\n
+    Respuesta:
+    """
+
     return prompt

@@ -5,20 +5,27 @@ import openai
 from utils.redis_helpers import connect_redis, reformat_redis, upload_to_redis, create_query_context
 from utils.ocr import ocr_files, get_db_schema
 from streamlit_chat import message
-from utils.common import load_models , LOG
+from utils.common import load_models , LOG, env
 from utils.ocr import ocr_files, get_db_schema
 from streamlit_chat import message
 from utils.model_inference_helpers import query_model, query_openai
 from openai.error import OpenAIError
-from dotenv import load_dotenv
 
-load_dotenv()
+
+LOG.info(f"Environment variables loaded: {env.controller} {env.worker}")
+models = load_models()
+
+# # Redis connection details
+# endpoint = "127.0.0.1"
+# port = 6379
+# username = "default"
 
 #redis_conn = connect_redis()
-controller_addr = "http://localhost:21001"
-worker_addr = "http://localhost:21002"
+controller_addr = env.worker
+worker_addr = env.controller
+LOG.info(f"Redis connection: {controller_addr} {worker_addr}")
 
-models = load_models()
+
 
 st.set_page_config(
     page_title="Upload Docs",
@@ -35,22 +42,9 @@ with st.sidebar:
     st.write(f"Modelo seleccionado: \n\n {models[model_select]}")
 
     if model_preference_hf_url == 'openai': 
-        openai.organization = "org-z1xMbou2zvfWdtaTwCDYFEsX"
-        openai.api_key = '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'
-        openai.api_type = "open_ai"
-        openai.api_version =  None
-
         gpt_engine = st.selectbox("Model Name",
-                                  ["text-davinci-002", "davinci"])
+                                  ["text-davinci-003", "text-davinci-002", "davinci"])
         max_new_tokens = st.number_input("Max Tokens", value=500, step=100)
-
-        # st.write("# GPT Model Parameters")
-        # gpt_engine = st.selectbox("Model Name",
-        #     ["gpt-4", "gpt-3.5-turbo", "davinci", "curie", "babbage", "ada"], index=1)
-        # max_tokens = st.number_input("Max Tokens", value=500, step=100)
-        # temperature = st.slider("Temperature", min_value=0.0, max_value=2.0, value=1.0, step=0.1)
-        # presence_penalty = st.slider("Presence Penalty", min_value=-2.0, max_value=2.0, value=0.0, step=0.1)
-        # frequency_penalty = st.slider("Frequency Penalty", min_value=-2.0, max_value=2.0, value=0.0, step=0.1)
         
 if 'generated' not in st.session_state:
     st.session_state['generated'] = []
