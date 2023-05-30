@@ -35,7 +35,7 @@ st.set_page_config(
 with st.sidebar:
     model_select = st.radio(
         "Elija el modelo que desea usar",
-        ('MarIA Base', 'MarIA large', 'Beto Base Spanish Sqac', 'ChatGPT'))
+        ('MarIA Base', 'MarIA large', 'Beto Base Spanish Sqac', 'mrm8488', 'ChatGPT'))
     
     model_preference_hf_url = models[model_select] # full url to model 
     LOG.info(f" Model selected: {model_preference_hf_url}")

@@ -68,6 +68,7 @@ def load_models():
                 'MarIA Base': 'PlanTL-GOB-ES/roberta-base-bne-sqac', # qa
                 'MarIA large': 'PlanTL-GOB-ES/roberta-large-bne-sqac', # qa
                 'Beto Base Spanish Sqac': 'IIC/beto-base-spanish-sqac', # qa
+                'mrm8488': 'mrm8488/distill-bert-base-spanish-wwm-cased-finetuned-spa-squad2-es',
                 'ChatGPT': 'openai', # paid token
                 'GPT2 Base Spanish Fine tuned': 'coming soon', # TODO: add model
             }
