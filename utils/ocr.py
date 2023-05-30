@@ -7,7 +7,6 @@ from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
-from transformers import RobertaTokenizer
 import torch
 from utils.common import LOG
 
@@ -41,8 +40,9 @@ def ocr_files(tempDir: str) -> dict:
 def load_tokenizer_database() -> SentenceTransformer:
     """This function loads the tokenizer
     Uses a BERT based sentence transformer 
-        -> TODO: Generate a Sentence Transformer based on the roberte base model 
     """
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
     model = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
     return model
 

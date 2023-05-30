@@ -35,6 +35,18 @@ def upload_to_redis(id_sentence: str, sourcepage: str, sourcefile: str, text: st
     redis_conn.hset(key, mapping=key_doc)
 
 
+def upload_reviews_to_redis(id_sentence: str, text: str, embedded_text: list, redis_conn: redis.Redis):
+    key_doc = {
+    "uid": id_sentence,
+    "content": text,
+    "embeddings": np.array(embedded_text).astype(dtype=np.float32).tobytes(),
+    }
+    # Store a blob of a random vector of type float32 under a field named 'vector' in Redis hash.
+    hash_key = hashlib.md5(text.encode()).hexdigest()
+    key = f"embedding:{hash_key}"
+    redis_conn.hset(key, mapping=key_doc)
+
+
 # Helper function to print results
 def print_results(res):
     docs = [doc.id for doc in res.docs]
@@ -45,12 +57,7 @@ def reformat_redis(redis_conn: redis.Redis):
     """Reformat the Redis database to use the new schema."""
     # Cleans the Redis database
     redis_conn.flushall()
-
-    
-
-
     vector_field = "embeddings"
-
     schema = (TextField("id"),
                 TextField("content"),
                 TextField("sourcepage"),
@@ -90,7 +97,6 @@ def create_query_context(redis_conn: redis.Redis, user_query: str, model: str) -
         Datos de la fuente:\n{context}\n\n
         Respuesta:"""
         return prompt
-    
         
     else: 
         context = f"{search_result.docs[0].content}, \n"
@@ -99,8 +105,9 @@ def create_query_context(redis_conn: redis.Redis, user_query: str, model: str) -
 
 
 def create_reviews_query_context(redis_conn: redis.Redis, user_query: str):
-    model = load_tokenizer_database()
-    embedded_query = get_embedding(model, user_query)
+    LOG.info("Creating reviews query context")
+    tokenizer = load_tokenizer_database()
+    embedded_query = get_embedding(user_query, tokenizer)
     vector_query = np.array(embedded_query).astype(dtype=np.float32).tobytes()
     search_result = get_top_n(10, redis_conn, vector_query)
     context = ""
@@ -108,9 +115,9 @@ def create_reviews_query_context(redis_conn: redis.Redis, user_query: str):
         # Merge the variables of the doc into a single string
         context = context + f"""Review {doc.uid} Content: {doc.content}\n"""
     
-    prompt = f""""As an intelligent chatbot, your role is to assist users asking questions about an Airbnb listing. You will respond to questions using only the data provided in the given source context. If the necessary information is not available in the provided sources, say I don't know."\n\n
-    Question: {user_query}\n\n
-    Source data:\n{context}\n\n
-    Answer:"""
+    prompt = f"""Como chatbot inteligente, su función es ayudar a los usuarios que hacen preguntas sobre un listado de Airbnb. Responderá a las preguntas utilizando solo los datos proporcionados en el contexto de la fuente dada. Si la información necesaria no está disponible en las fuentes proporcionadas, diga no lo sé."\n\n
+    Pregunta: {user_query}\n\n
+    Referencias:\n{context}\n\n
+    Respuesta:"""
     print(prompt)
     return prompt
