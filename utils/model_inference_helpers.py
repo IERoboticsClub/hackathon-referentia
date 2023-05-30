@@ -1,19 +1,18 @@
 import torch
 from transformers import pipeline
-from utils.common import LOG
+from utils.common import LOG, env
 import os
 import openai
 from openai.error import OpenAIError
 
 
 
-def query_openai(gpt_engine: str, assistant_prompt: str, max_new_tokens: int): 
+def query_openai(gpt_engine: str, assistant_prompt: str, max_new_tokens: int, **args): 
     """This function creates a query for the openai model"""
-    LOG.info(f"Engine: {gpt_engine}")
-    LOG.info(f"Assistant Prompt: {assistant_prompt}")
-    LOG.info(f"Max Tokens: {max_new_tokens}")
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    openai.organization = os.getenv("OPENAI_ORG")
+    openai.api_key = env.openapi
+    openai.organization = env.org
+    openai.api_version = env.version
+    LOG.info(f"OpenAI API:{env}")
     try:
 
         response = openai.Completion.create(
